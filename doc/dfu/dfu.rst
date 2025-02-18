@@ -34,7 +34,7 @@ When additional flash is used, the ``-DDFU_IN_FLASH`` flag should be added to ``
 * On the ATM33 platform additional flash **IS** required when using BLE OTA with ``ATMWSTKLIB`` but is not required when using ``ATMWSTK``.
 * On the ATM34 platform additional flash is always required. ``DFU_IN_FLASH`` is the default and does not need to be specified.
 
-Here is an example build command for the ATM33 platform that uses the ``LL`` BLE stack with external flash, which uses `method 2 <overlay_methods>`_ to provide both overlay files to enable BLE and UART based DFU::
+Here is an example build command for the ATM33 platform that uses the ``LL`` BLE stack with external flash, which uses `method 2 <#overlay_methods>`_ to provide both overlay files to enable BLE and UART based DFU::
 
     west build -p -s ${APP} -b ${BOARD}@mcuboot//ns -d build/${BOARD}_ns/${APP} -- \
         -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_MCUBOOT_SIGNATURE_KEY_FILE=\"bootloader/mcuboot/root-ec-p256.pem\" \
