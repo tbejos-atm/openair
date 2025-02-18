@@ -11,6 +11,8 @@ By including both overlays, the ability to perform Serial DFU and BLE OTA will b
 There are three options for using the provided overlay files:
 
 .. _overlay_methods:
+Methods
+=======
 
 1. The absolute path to the overlay files may be provided to the build using the ``-DEXTRA_CONF_FILE="${WEST_TOPDIR}/openair/doc/dfu/overlay-bt-dfu.conf"`` build option. Multiple overlays may be provided if they are separated by semicolons.
 2. The files can be copied to the directory of the sample where ``prj.conf`` is located, this also uses the ``-DEXTRA_CONF_FILE`` option when building to specify which should be included in the build. This does not need the absolute path to be provided but instead just the file name(s).
