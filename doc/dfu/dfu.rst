@@ -7,12 +7,11 @@ It requires the target device to use an MCUboot application as the primary bootl
 
 Overlay files for Serial DFU (``overlay-serial-dfu.conf``) and for BLE OTA (``overlay-bt-dfu.conf``) are provided in this directory and can be added to a sample in order to add DFU functionality.
 They may either be used individually, or together depending on what forms of DFU are desired.
-By including both overlays, the ability to perform Serial DFU and BLE OTA will be supported
-There are three options for using the provided overlay files:
+By including both overlays, the ability to perform Serial DFU and BLE OTA will be supported.
 
-.. _overlay_methods:
 Methods
-=======
+-------
+There are three methods for using the provided overlay files:
 
 1. The absolute path to the overlay files may be provided to the build using the ``-DEXTRA_CONF_FILE="${WEST_TOPDIR}/openair/doc/dfu/overlay-bt-dfu.conf"`` build option. Multiple overlays may be provided if they are separated by semicolons.
 2. The files can be copied to the directory of the sample where ``prj.conf`` is located, this also uses the ``-DEXTRA_CONF_FILE`` option when building to specify which should be included in the build. This does not need the absolute path to be provided but instead just the file name(s).
@@ -27,7 +26,7 @@ Building for DFU
 ================
 
 When building an application that supports DFU, MCUboot must be built and flashed (and the SPE with MCUboot enabled for platforms with TrustZone).
-Please see the `platform specific instructions <../../README.rst>`_ on how to build MCUboot.
+Please see the `platform specific instructions <../../README.rst#supported-platforms>`_ on how to build MCUboot.
 
 For most configurations, additional (external) flash is not required but is supported if desired.
 When additional flash is used, the ``-DDFU_IN_FLASH`` flag should be added to ``-DDTS_EXTRA_CPPFLAGS``.
