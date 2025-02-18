@@ -27,7 +27,7 @@ Building for DFU
 ================
 
 When building an application that supports DFU, MCUboot must be built and flashed (and the SPE with MCUboot enabled for platforms with TrustZone).
-Please see the :ref:`platform specific instructions <atmsdk>` on how to build MCUboot.
+Please see the `platform specific instructions <../../README.rst>`_ on how to build MCUboot.
 
 For most configurations, additional (external) flash is not required but is supported if desired.
 When additional flash is used, the ``-DDFU_IN_FLASH`` flag should be added to ``-DDTS_EXTRA_CPPFLAGS``.
