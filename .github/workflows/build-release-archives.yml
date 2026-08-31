@@ -261,7 +261,7 @@ jobs:
 
           passes = [
               (board, os.environ['TWISTER_TAGS_NORMAL'].split(), 'twister-normal'),
-               # (f'{board}@mcuboot', os.environ['TWISTER_TAGS_MCUBOOT'].split(), 'twister-mcuboot'),
+              (f'{board}@mcuboot', os.environ['TWISTER_TAGS_MCUBOOT'].split(), 'twister-mcuboot'),
           ]
 
           selected_count = 0

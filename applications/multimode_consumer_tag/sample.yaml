@@ -9,6 +9,8 @@ common:
     - bluetooth
 tests:
   applications.multimode_consumer_tag.atm:
+    tags:
+      - openair_release
     extra_args:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
       - EXTRA_CONF_FILE="stf_tag.conf"
@@ -397,6 +399,7 @@ tests:
   applications.multimode_consumer_tag.atm.fhn_fmna_tag.cs_demo:
     tags:
       - channel_sounding
+      - openair_release
     depends_on:
       - channel_sounding
     extra_args:
