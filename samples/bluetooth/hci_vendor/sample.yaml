@@ -15,9 +15,13 @@ common:
     - CONFIG_BT_SETTINGS=y
 tests:
   samples.bluetooth.hci_vendor.atm.pd50:
+    tags:
+      - openair_release
     extra_configs:
       - CONFIG_ATMWSTK_PD50=y
   samples.bluetooth.hci_vendor.atm: &base_config
+    tags:
+      - openair_release
     extra_args:
       - SB_CONFIG_DTS_EXTRA_SELECT_CPD200_HINT=y
   samples.bluetooth.hci_vendor.atm.gcov:
