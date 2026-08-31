@@ -67,6 +67,8 @@ tests:
       regex:
       - "advP:"
   applications.multimode_consumer_tag.atm.fhn_fmna_tag:
+    tags:
+      - openair_release
     extra_args:
       - SB_ATM_DTS_EXTRA_CPPFLAGS="-DATM_STORAGE_SIZE=0x1000"
     extra_configs:
