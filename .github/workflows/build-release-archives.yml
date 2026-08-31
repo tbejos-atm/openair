@@ -6,11 +6,8 @@ name: Build OpenAir Release Archives
 # testcase.yaml files.
 #
 # Two twister passes are made per board:
-#   - normal revision:  -t openair_release -e mcuboot
-#   - mcuboot revision: -t mcuboot
-# The second pass is a placeholder until mcuboot scenarios carry a dedicated
-# release tag; twister ORs multiple -t values, so 'openair_release AND mcuboot'
-# is not expressible in a single invocation.
+#   - normal revision:  -t openair_release
+#   - mcuboot revision: -t openair_release_mcuboot
 #
 # Pull requests to rel_*/pre_rel_* and pushes to pre_rel_*: archives are
 # uploaded as workflow artifacts. Pushes to rel_*: archives are also attached
@@ -29,9 +26,9 @@ on:
 
 env:
   # Tag filter arguments for the normal-revision twister pass.
-  TWISTER_TAGS_NORMAL: -t openair_release -e mcuboot
+  TWISTER_TAGS_NORMAL: -t openair_release
   # Tag filter arguments for the mcuboot-revision twister pass.
-  TWISTER_TAGS_MCUBOOT: -t mcuboot
+  TWISTER_TAGS_MCUBOOT: -t openair_release_mcuboot
 
 jobs:
   discover-boards:
