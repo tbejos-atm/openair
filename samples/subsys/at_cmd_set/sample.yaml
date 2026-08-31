@@ -36,6 +36,8 @@ tests:
       type: one_line
       regex:
         - "Ready for AT commands"
+    tags:
+      - openair_release
   samples.subsys.at_cmd_set.atm.mcuboot:
     harness: console
     harness_config:
@@ -74,6 +76,8 @@ tests:
         - "-v"
         - "-T"
         - "5"
+    tags:
+      - openair_release
   samples.subsys.at_cmd_set.atm.pytest.system:
     harness: pytest
     timeout: 300

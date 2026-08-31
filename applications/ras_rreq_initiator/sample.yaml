@@ -15,9 +15,13 @@ common:
     - channel_sounding
 tests:
   applications.ras_rreq_initiator.atm:
+    tags:
+      - openair_release
     extra_args:
       - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
   applications.ras_rreq_initiator.atm.ipt:
+    tags:
+      - openair_release
     extra_args:
       - spe_DTC_OVERLAY_FILE=${ZEPHYR_OPENAIR_MODULE_DIR}/applications/ras_rreq_initiator/spe_uart0.overlay
     extra_configs:
