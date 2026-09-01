@@ -55,10 +55,6 @@ jobs:
           boards_dir = 'boards/atmosic'
 
           for board_subdir in os.listdir(boards_dir):
-              # Exclude atmevk-02
-              if board_subdir == 'atmevk-02':
-                  continue
-
               board_yml_path = os.path.join(boards_dir, board_subdir, 'board.yml')
               if os.path.isfile(board_yml_path):
                   with open(board_yml_path, 'r') as f:

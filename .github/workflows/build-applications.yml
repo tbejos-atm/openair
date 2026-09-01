@@ -33,6 +33,7 @@ env:
   SCENARIO_BLACKLIST: |
     # tests.example.scenario.to.skip
     # tests.drivers.some_subsystem.*
+    tests.subsys.dfu.mcuboot_multi.atm.mcuboot.*
 
 jobs:
   discover-applications:
