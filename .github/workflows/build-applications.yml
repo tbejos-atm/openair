@@ -164,36 +164,18 @@ jobs:
       - name: Set up Python environment
         run: |
           python3 -m pip install --user -U pip
-          python3 -m pip install --user west
+          # patool, requests, semver and tqdm are imported directly by the
+          # 'west sdk' extension command
+          python3 -m pip install --user west patool requests semver tqdm
 
       - name: Check Zephyr SDK cache
         id: cache-zephyr-sdk
         uses: actions/cache/restore@v6
         with:
           path: ~/zephyr-sdk-1.0.1
-          key: ${{ runner.os }}-zephyr-sdk-1.0.1-min
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
           # Only test for the entry - the matrix jobs do the actual restore
           lookup-only: true
-
-      - name: Install Zephyr SDK
-        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
-        run: |
-          cd ~
-          # Using Zephyr SDK 1.0.1 which is compatible with Zephyr-based projects.
-          # The minimal bundle carries no toolchains - setup.sh fetches only
-          # arm-zephyr-eabi from the same release.
-          wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.1/zephyr-sdk-1.0.1_linux-x86_64_minimal.tar.xz
-          wget -O - https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.1/sha256.sum | shasum --check --ignore-missing
-          tar xvf zephyr-sdk-1.0.1_linux-x86_64_minimal.tar.xz
-          cd zephyr-sdk-1.0.1
-          ./setup.sh -t arm-zephyr-eabi
-
-      - name: Save Zephyr SDK cache
-        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ~/zephyr-sdk-1.0.1
-          key: ${{ runner.os }}-zephyr-sdk-1.0.1-min
 
       - name: Check West modules cache
         id: cache-west-modules
@@ -207,8 +189,11 @@ jobs:
           key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
           lookup-only: true
 
+      # 'west sdk' is an extension command carried by the zephyr project, so it
+      # needs the modules on disk even when their cache entry already exists.
+      # Only pay for that restore when the SDK has to be installed.
       - name: Restore closest West modules cache
-        if: steps.cache-west-modules.outputs.cache-hit != 'true'
+        if: steps.cache-west-modules.outputs.cache-hit != 'true' || steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
         uses: actions/cache/restore@v6
         with:
           path: |
@@ -241,6 +226,23 @@ jobs:
             ${{ github.workspace }}/modules
             ${{ github.workspace }}/.west
           key: ${{ runner.os }}-west-modules-${{ hashFiles('openair/west.yml') }}
+
+      - name: Install Zephyr SDK
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        run: |
+          cd ${{ github.workspace }}
+          # Fetches the minimal bundle and only the arm-zephyr-eabi toolchain,
+          # installing to ~/zephyr-sdk-1.0.1. -H skips the host tools, which the
+          # build does not use. The version is pinned here to match the cache
+          # key - omitting it would take the value from zephyr/SDK_VERSION.
+          west sdk install --version 1.0.1 -H -t arm-zephyr-eabi
+
+      - name: Save Zephyr SDK cache
+        if: steps.cache-zephyr-sdk.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/zephyr-sdk-1.0.1
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
 
   build:
     needs: [discover-applications, prepare]
@@ -275,7 +277,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ~/zephyr-sdk-1.0.1
-          key: ${{ runner.os }}-zephyr-sdk-1.0.1-min
+          key: ${{ runner.os }}-zephyr-sdk-1.0.1-west
 
       # The SDK is installed and cached by the 'prepare' job, so a miss here
       # means the entry was evicted or its save was dropped, not that the SDK
