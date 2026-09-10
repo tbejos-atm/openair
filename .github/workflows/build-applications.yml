@@ -40,8 +40,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-      platforms_normal: ${{ steps.set-matrix.outputs.platforms_normal }}
-      platforms_mcuboot: ${{ steps.set-matrix.outputs.platforms_mcuboot }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -49,7 +47,7 @@ jobs:
       - name: Install PyYAML
         run: pip3 install --user PyYAML
 
-      - name: Discover applications and platforms
+      - name: Discover applications
         id: set-matrix
         run: |
           python3 << 'EOF'
@@ -72,43 +70,6 @@ jobs:
 
           def is_blacklisted(test_name):
               return any(fnmatch.fnmatch(test_name, pattern) for pattern in blacklist)
-
-          # Discover twister platform identifiers from the board yaml files under
-          # boards/atmosic. These carry the fully qualified identifier that
-          # twister's -p expects, e.g. 'ATMEVK-3330-QN-6/ATM33xx-5', along with
-          # the 'supported:' feature list that twister matches depends_on
-          # against. board.yml and runner_config.yml have no 'identifier' and
-          # are skipped.
-          platforms_normal = []
-          platforms_mcuboot = []
-          boards_dir = 'boards/atmosic'
-
-          for root, dirs, files in os.walk(boards_dir):
-              for name in files:
-                  if not name.endswith(('.yaml', '.yml')):
-                      continue
-                  path = os.path.join(root, name)
-                  try:
-                      data = yaml.safe_load(open(path))
-                  except Exception as e:
-                      print(f"Warning: Failed to parse {path}: {e}")
-                      continue
-                  if not isinstance(data, dict) or 'identifier' not in data:
-                      continue
-                  identifier = data['identifier']
-                  if '@mcuboot' in identifier:
-                      platforms_mcuboot.append(identifier)
-                  else:
-                      platforms_normal.append(identifier)
-
-          platforms_normal.sort()
-          platforms_mcuboot.sort()
-          print(f"Discovered {len(platforms_normal)} normal platforms:")
-          for p in platforms_normal:
-              print(f"  - {p}")
-          print(f"Discovered {len(platforms_mcuboot)} @mcuboot platforms:")
-          for p in platforms_mcuboot:
-              print(f"  - {p}")
 
           # Find all application directories with a sample.yaml or testcase.yaml.
           # Which scenario builds on which platform is left to twister; this only
@@ -144,8 +105,6 @@ jobs:
           matrix = {'include': [{'app_dir': d} for d in app_dirs]}
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"matrix={json.dumps(matrix)}\n")
-              f.write(f"platforms_normal={' '.join(platforms_normal)}\n")
-              f.write(f"platforms_mcuboot={' '.join(platforms_mcuboot)}\n")
           EOF
 
   prepare:
@@ -358,45 +317,47 @@ jobs:
       - name: Build all configurations for ${{ matrix.app_dir }}
         id: build
         env:
-          PLATFORMS_NORMAL: ${{ needs.discover-applications.outputs.platforms_normal }}
-          PLATFORMS_MCUBOOT: ${{ needs.discover-applications.outputs.platforms_mcuboot }}
           QUARANTINE_LIST: ${{ steps.quarantine.outputs.path }}
         run: |
           python3 << 'EOF'
           import subprocess
           import json
           import os
+          import sys
+
+          # Twister writes to the inherited stdout while this script's own
+          # stdout is block buffered, which would otherwise flush every print
+          # here after all of twister's output.
+          sys.stdout.reconfigure(line_buffering=True)
 
           app_dir = '${{ matrix.app_dir }}'
           workspace = '${{ github.workspace }}'
-
-          def platform_args(var):
-              args = []
-              for p in os.environ.get(var, '').split():
-                  args += ['-p', p]
-              return args
 
           quarantine = os.environ.get('QUARANTINE_LIST', '')
           quarantine_args = ['--quarantine-list', quarantine] if quarantine else []
 
           # The mcuboot scenarios need the '@mcuboot' board revision, so they are
-          # built in a separate pass against the '@mcuboot' platform identifiers.
+          # built in a separate pass against the '@mcuboot' board targets.
           # Twister ORs multiple -t values, hence the split rather than one call.
+          # Board targets are selected by twister itself: '--platform-pattern' is
+          # matched against every target alias, so the '@<revision>' component
+          # picks the pass. The '@mcuboot_bl' bootloader-only targets carry
+          # 'twister: false' in their board twister.yaml and are dropped before
+          # the pattern is applied, so they can never be matched here.
           passes = [
-              ('normal', platform_args('PLATFORMS_NORMAL'), ['-e', 'mcuboot'],
-               'twister-normal'),
-              ('mcuboot', platform_args('PLATFORMS_MCUBOOT'), ['-t', 'mcuboot'],
-               'twister-mcuboot'),
+              ('normal', ['--vendor', 'atmosic',
+                          '--platform-pattern', 'ATM.*@normal/'],
+               ['-e', 'mcuboot'], 'twister-normal'),
+              ('mcuboot', ['--vendor', 'atmosic',
+                           '--platform-pattern', 'ATM.*@mcuboot/'],
+               ['-t', 'mcuboot'], 'twister-mcuboot'),
           ]
 
           selected_count = 0
           fail_count = 0
+          pattern_errors = 0
 
           for label, plat_args, tag_args, out_dir in passes:
-              if not plat_args:
-                  print(f"⚠️  No platforms discovered for the {label} pass, skipping")
-                  continue
-
               cmd = [
                   'west', 'twister',
                   '-T', f'openair/{app_dir}',
@@ -406,6 +367,11 @@ jobs:
                   '--build-only',
                   '-O', out_dir,
                   '-v', '--inline-logs',
+                  # Filtered instances are left out of twister.json by default.
+                  # They are needed here to tell 'the pattern matched no board
+                  # target' apart from 'this app has no scenario for this pass',
+                  # which is the normal case for every non-mcuboot application.
+                  '--report-filtered',
               ]
 
               print(f"\n{'='*80}")
@@ -421,19 +387,33 @@ jobs:
 
               report_path = os.path.join(workspace, out_dir, 'twister.json')
               if not os.path.isfile(report_path):
-                  # Also the normal outcome when no scenario in this app carries
-                  # the tag for this pass - twister then finds nothing to do and
-                  # exits without writing a report.
+                  # An app whose scenarios all carry the other pass's tag still
+                  # gets a report, with every instance 'filtered'. No report at
+                  # all means twister bailed out before reporting.
                   print(f"⚠️  No twister.json produced for the {label} pass")
                   continue
 
               with open(report_path, 'r') as f:
                   report = json.load(f)
 
+              suites = report.get('testsuites', [])
+
+              # Every board target the pattern matched produces an instance,
+              # filtered or not, so an empty platform set means the pattern
+              # matched no target at all - a workflow bug rather than a build
+              # outcome, and one twister itself reports as success.
+              platforms = {s.get('platform') for s in suites if s.get('platform')}
+              if not platforms:
+                  print(f"❌ --platform-pattern matched no board target for the "
+                        f"{label} pass")
+                  pattern_errors += 1
+                  continue
+              print(f"{len(platforms)} board targets matched for the {label} pass")
+
               # 'filtered' instances were pruned by twister from the scenario
               # metadata - depends_on, platform_allow and friends - or by the
               # quarantine list, and are not build failures.
-              for suite in report.get('testsuites', []):
+              for suite in suites:
                   status = suite.get('status')
                   if status == 'filtered':
                       continue
@@ -454,6 +434,9 @@ jobs:
               f.write(f"selected_count={selected_count}\n")
               f.write(f"success_count={success_count}\n")
               f.write(f"fail_count={fail_count}\n")
+
+          if pattern_errors:
+              exit(1)
 
           # Exit with error only if every selected build failed
           if selected_count > 0 and success_count == 0:
