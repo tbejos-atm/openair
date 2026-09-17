@@ -2,6 +2,11 @@
 #
 ## SPDX-License-Identifier: LicenseRef-Atmosic
 #
+common:
+  # boards/common.overlay dereferences &i2s, so the overlay only compiles on a
+  # SoC declaring that node.
+  depends_on:
+    - i2s
 tests:
   tests.subsys.audio.stream.state_machine.atm: &base_config
     sysbuild: true

@@ -2,6 +2,11 @@
 #
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
+common:
+  # The commands enabled by default, e.g. VND_XTAL_32K_PIN_OUT, call into
+  # atm_vendor_drv entry points that the ATMx2 HAL does not implement.
+  depends_on:
+    - atm_vendor_drv
 tests:
   tests.lib.atm_vendor.atm: &base_config
     sysbuild: true

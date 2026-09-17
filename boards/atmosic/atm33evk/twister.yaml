@@ -19,6 +19,9 @@ toolchain:
 # can be pulled into a variant with '*common'.
 supported:
   - &common "adc:bluetooth:entropy:gpio:i2c:pwm:rram:spi:uart:watchdog"
+  - &common "adc:atm3x_pwm:atm_vendor_drv:bluetooth:button0:button1:entropy:factory_partition:\
+    gpio:i2c:i2s:pin_pulldown:pwm:rram:spi:trustzone_m:uart:watchdog"
+
 
 variants:
   ATMEVK-3325-CM-6@normal/ATM33xx-5:
