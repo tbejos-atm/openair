@@ -435,11 +435,10 @@ jobs:
               f.write(f"success_count={success_count}\n")
               f.write(f"fail_count={fail_count}\n")
 
-          if pattern_errors:
-              exit(1)
-
-          # Exit with error only if every selected build failed
-          if selected_count > 0 and success_count == 0:
+          # Failing here rather than on twister's exit code lets both passes
+          # build every configuration first, so one broken board target does
+          # not hide the state of the rest.
+          if pattern_errors or fail_count:
               exit(1)
           EOF
 
