@@ -8,6 +8,10 @@ sample:
 common:
   sysbuild: true
   harness: console
+  # app.overlay aliases sw0 to &button1, so it only compiles on a board
+  # declaring a second user button.
+  depends_on:
+    - button1
   tags:
     - multimode_consumer_tag
     - bluetooth

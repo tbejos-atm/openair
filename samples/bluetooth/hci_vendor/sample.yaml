@@ -14,6 +14,10 @@ common:
     type: one_line
     regex:
       - "atm_hci_init done"
+  # The commands enabled by default call into atm_vendor_drv entry points that
+  # only the HALs declaring this feature implement.
+  depends_on:
+    - atm_vendor_drv
   sysbuild: true
   extra_configs:
     - CONFIG_BT_SETTINGS=y

@@ -16,9 +16,12 @@ toolchain:
 
 # Features supported by every ATM33 EVK board target. Twister splits each
 # 'supported' entry on ':', so this single entry expands to the whole set and
-# can be pulled into a variant with '*common'.
+# can be pulled into a variant with '*common'. The trailing '\' are double-quoted
+# YAML line continuations -- they add no characters and exist only to stay under
+# the 100-column yamllint limit.
 supported:
-  - &common "adc:bluetooth:entropy:gpio:i2c:pwm:rram:spi:uart:watchdog"
+  - &common "adc:atm3x_pwm:atm_vendor_drv:bluetooth:button0:button1:entropy:factory_partition:\
+    gpio:i2c:i2s:pin_pulldown:pwm:rram:spi:trustzone_m:uart:watchdog"
 
 variants:
   ATMEVK-3325-CM-6@normal/ATM33xx-5:

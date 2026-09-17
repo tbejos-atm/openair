@@ -12,7 +12,10 @@ common:
     - atm_test_with_spe
     - bluetooth
     - channel_sounding
+  # app.overlay drives &button1, so it only compiles on a board declaring a
+  # second user button.
   depends_on:
+    - button1
     - channel_sounding
 tests:
   applications.ras_rrsp_reflector.atm:

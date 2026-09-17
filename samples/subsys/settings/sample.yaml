@@ -18,6 +18,10 @@ common:
   tags:
     - atm_test_with_spe
     - introduction
+  # The factory tag data is generated into the factory_partition, which only
+  # the SoCs with a generated flash layout declare.
+  depends_on:
+    - factory_partition
 tests:
   samples.subsys.settings.atm: &base_config {}
   samples.subsys.settings.atm.gcov: &gcov_config

@@ -2,6 +2,11 @@
 #
 # SPDX-License-Identifier: LicenseRef-Atmosic
 
+common:
+  # CONFIG_PWM_ATM_FIFO depends on DT_HAS_ATMOSIC_ATM3X_PWM_ENABLED: FIFO mode
+  # exists on every Atmosic chipset except the ATMx2 series.
+  depends_on:
+    - atm3x_pwm
 tests:
   tests.drivers.pwm.pwm_atm_fifo.atm: &base_config
     sysbuild: true

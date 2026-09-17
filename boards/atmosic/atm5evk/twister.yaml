@@ -20,16 +20,16 @@ toolchain:
 # YAML line continuations -- they add no characters and exist only to stay under
 # the 100-column yamllint limit.
 supported:
-  - &common "adc:atlc:bluetooth:channel_sounding:entropy:flash:gpio:i2c:i2c_clock_stretching:\
-    nv_mem_protect:pwm:qspi_war:radio_hal_burst:sec_jrnl_otp_flash:sha2_multi_context:spi:uart:\
-    watchdog"
+  - &common "adc:antenna_switch:atlc:atm3x_pwm:atm_vendor_drv:bluetooth:button0:button1:\
+    channel_sounding:entropy:factory_partition:flash:gpio:i2c:i2c_clock_stretching:i2s:\
+    nv_mem_protect:pin_pulldown:pwm:qspi_war:radio_hal_burst:sec_jrnl_otp_flash:\
+    sha2_multi_context:spi:trustzone_m:uart:watchdog"
 
 variants:
   ATMEVK-5205-NQK-2@normal/ATM5xxx-2:
     supported:
       - *common
       - hid_remote
-      - i2s
       - ir
       - lis2dh
       - pdm
@@ -38,7 +38,6 @@ variants:
     supported:
       - *common
       - hid_remote
-      - i2s
       - pdm
 
   ATMEVK-5305-NBV-2@normal/ATM5xxx-2:
@@ -71,7 +70,6 @@ variants:
     supported:
       - *common
       - gcov_capable
-      - i2s
       - ir
       - lis2dh
       - wdt
