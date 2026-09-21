@@ -81,8 +81,8 @@
 		i2c-1 = &i2c0;
 		led0 = &led0;
 		led1 = &led1;
-		pwm-0 = &pwm3;
-		pwm-test = &pwm3;
+		pwm-0 = &pwm1;
+		pwm-test = &pwm1;
 		pwm-led0 = &pwm_led0;
 		sw0 = &button0;
 	};
