@@ -356,6 +356,7 @@ jobs:
           selected_count = 0
           fail_count = 0
           pattern_errors = 0
+          run_errors = 0
 
           for label, plat_args, tag_args, out_dir in passes:
               cmd = [
@@ -389,8 +390,12 @@ jobs:
               if not os.path.isfile(report_path):
                   # An app whose scenarios all carry the other pass's tag still
                   # gets a report, with every instance 'filtered'. No report at
-                  # all means twister bailed out before reporting.
-                  print(f"⚠️  No twister.json produced for the {label} pass")
+                  # all means twister bailed out before reporting - a broken
+                  # board twister.yaml, for instance - and leaves nothing for
+                  # the counters below to see, so it has to fail the job here.
+                  print(f"❌ twister produced no twister.json for the {label} "
+                        f"pass - it exited before reporting")
+                  run_errors += 1
                   continue
 
               with open(report_path, 'r') as f:
@@ -438,7 +443,7 @@ jobs:
           # Failing here rather than on twister's exit code lets both passes
           # build every configuration first, so one broken board target does
           # not hide the state of the rest.
-          if pattern_errors or fail_count:
+          if pattern_errors or run_errors or fail_count:
               exit(1)
           EOF
 
