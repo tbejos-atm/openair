@@ -321,6 +321,7 @@ jobs:
         run: |
           python3 << 'EOF'
           import subprocess
+          import glob
           import json
           import os
           import sys
@@ -357,6 +358,27 @@ jobs:
           fail_count = 0
           pattern_errors = 0
           run_errors = 0
+          failed_dirs = []
+
+          def build_dir_for(suite, out_dir):
+              # Twister derives a build directory from the platform, the
+              # toolchain and then either the full test id or the source path,
+              # depending on the suite's 'detailed_test_id'. The report does not
+              # say which was used, so both layouts are probed, then the tree is
+              # searched for the scenario directory as a last resort.
+              base = os.path.join(workspace, out_dir,
+                                  (suite.get('platform') or '').replace('/', '_'),
+                                  (suite.get('toolchain') or '').replace('/', '_'))
+              name = suite.get('name') or ''
+              src = (suite.get('path') or '').rsplit('../', 1)[-1]
+              candidates = [os.path.join(base, name), os.path.join(base, src, name)]
+              candidates += sorted(glob.glob(os.path.join(base, '**',
+                                                          name.rsplit('/', 1)[-1]),
+                                             recursive=True))
+              for candidate in candidates:
+                  if os.path.isdir(candidate):
+                      return os.path.relpath(candidate, workspace)
+              return None
 
           for label, plat_args, tag_args, out_dir in passes:
               cmd = [
@@ -427,6 +449,17 @@ jobs:
                       fail_count += 1
                       print(f"❌ {suite.get('name')} on {suite.get('platform')}: "
                             f"{suite.get('reason', 'unknown')}")
+                      build_dir = build_dir_for(suite, out_dir)
+                      if build_dir:
+                          failed_dirs.append(build_dir)
+                      else:
+                          print(f"⚠️  no build directory found under {out_dir} "
+                                f"for this failure - its logs cannot be archived")
+
+          # Consumed by the log collection step so only the failing builds are
+          # archived; written unconditionally so that step has a known input.
+          with open(os.path.join(workspace, 'failed-build-dirs.txt'), 'w') as f:
+              f.writelines(f"{d}\n" for d in failed_dirs)
 
           success_count = selected_count - fail_count
 
@@ -456,12 +489,25 @@ jobs:
             (steps.build.outcome != 'success' || steps.build.outputs.fail_count != '0')
         run: |
           cd ${{ github.workspace }}
-          # Log files and reports only - the build trees themselves are large
-          # and not useful for diagnosis.
-          find twister-normal twister-mcuboot \
-            \( -name '*.log' -o -name 'twister.json' -o -name 'twister.xml' \) \
-            -print0 2>/dev/null \
-            | tar --null --files-from=- -czf build-logs.tar.gz || true
+          # Only the failing builds' logs. A passing board target's logs are of
+          # no diagnostic use and there are dozens of them per application.
+          : > logs-to-archive.txt
+          if [ -f failed-build-dirs.txt ]; then
+            while IFS= read -r dir; do
+              # A sysbuild failure leaves logs in the image subdirectories too,
+              # so the whole build directory is walked.
+              [ -d "$dir" ] && find "$dir" -name '*.log' >> logs-to-archive.txt || true
+            done < failed-build-dirs.txt
+          fi
+          # The reports cover the whole run and are small, so they go in even
+          # when the build step died before producing any build directory.
+          find twister-normal twister-mcuboot -maxdepth 1 \
+            \( -name 'twister.json' -o -name 'twister.xml' \) \
+            >> logs-to-archive.txt 2>/dev/null || true
+
+          if [ -s logs-to-archive.txt ]; then
+            tar -czf build-logs.tar.gz --files-from=logs-to-archive.txt
+          fi
 
           if [ -s build-logs.tar.gz ]; then
             echo "name=build-logs-$(echo '${{ matrix.app_dir }}' | tr '/' '-')" >> $GITHUB_OUTPUT
