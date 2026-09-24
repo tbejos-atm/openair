@@ -324,6 +324,7 @@ jobs:
           import glob
           import json
           import os
+          import shutil
           import sys
 
           # Twister writes to the inherited stdout while this script's own
@@ -358,7 +359,12 @@ jobs:
           fail_count = 0
           pattern_errors = 0
           run_errors = 0
-          failed_dirs = []
+
+          # Failing builds' logs are copied here as they are reported, so they
+          # are already in place if a later pass dies. The upload step only
+          # packages this directory.
+          staging = os.path.join(workspace, 'build-logs')
+          shutil.rmtree(staging, ignore_errors=True)
 
           def build_dir_for(suite, out_dir):
               # Twister derives a build directory from the platform, the
@@ -377,8 +383,28 @@ jobs:
                                              recursive=True))
               for candidate in candidates:
                   if os.path.isdir(candidate):
-                      return os.path.relpath(candidate, workspace)
+                      return candidate
               return None
+
+          def stage_logs(build_dir, suite):
+              # The platform already names the pass through its '@normal' /
+              # '@mcuboot' variant, so platform plus scenario identifies a build
+              # uniquely. The toolchain and source path components twister nests
+              # the build under are the same for everything in this job, so they
+              # are dropped rather than buried in the archive. A sysbuild failure
+              # leaves logs in the image subdirectories, so the whole build
+              # directory is walked and its internal layout kept.
+              dest = os.path.join(staging,
+                                  (suite.get('platform') or '').replace('/', '_'),
+                                  (suite.get('name') or '').rsplit('/', 1)[-1])
+              for root, _, files in os.walk(build_dir):
+                  for name in files:
+                      if not name.endswith('.log'):
+                          continue
+                      target = os.path.normpath(
+                          os.path.join(dest, os.path.relpath(root, build_dir), name))
+                      os.makedirs(os.path.dirname(target), exist_ok=True)
+                      shutil.copy2(os.path.join(root, name), target)
 
           for label, plat_args, tag_args, out_dir in passes:
               cmd = [
@@ -451,15 +477,10 @@ jobs:
                             f"{suite.get('reason', 'unknown')}")
                       build_dir = build_dir_for(suite, out_dir)
                       if build_dir:
-                          failed_dirs.append(build_dir)
+                          stage_logs(build_dir, suite)
                       else:
                           print(f"⚠️  no build directory found under {out_dir} "
                                 f"for this failure - its logs cannot be archived")
-
-          # Consumed by the log collection step so only the failing builds are
-          # archived; written unconditionally so that step has a known input.
-          with open(os.path.join(workspace, 'failed-build-dirs.txt'), 'w') as f:
-              f.writelines(f"{d}\n" for d in failed_dirs)
 
           success_count = selected_count - fail_count
 
@@ -489,24 +510,24 @@ jobs:
             (steps.build.outcome != 'success' || steps.build.outputs.fail_count != '0')
         run: |
           cd ${{ github.workspace }}
-          # Only the failing builds' logs. A passing board target's logs are of
-          # no diagnostic use and there are dozens of them per application.
-          : > logs-to-archive.txt
-          if [ -f failed-build-dirs.txt ]; then
-            while IFS= read -r dir; do
-              # A sysbuild failure leaves logs in the image subdirectories too,
-              # so the whole build directory is walked.
-              [ -d "$dir" ] && find "$dir" -name '*.log' >> logs-to-archive.txt || true
-            done < failed-build-dirs.txt
-          fi
+          # The build step has already copied each failing build's logs into
+          # 'build-logs/<platform>/<scenario>'. A passing board target's logs
+          # are of no diagnostic use and there are dozens of them per
+          # application, so nothing else is collected from the build trees.
+          mkdir -p build-logs/reports
+
           # The reports cover the whole run and are small, so they go in even
           # when the build step died before producing any build directory.
-          find twister-normal twister-mcuboot -maxdepth 1 \
-            \( -name 'twister.json' -o -name 'twister.xml' \) \
-            >> logs-to-archive.txt 2>/dev/null || true
+          for out in twister-normal twister-mcuboot; do
+            for report in twister.json twister.xml; do
+              if [ -f "$out/$report" ]; then
+                cp "$out/$report" "build-logs/reports/$out-$report"
+              fi
+            done
+          done
 
-          if [ -s logs-to-archive.txt ]; then
-            tar -czf build-logs.tar.gz --files-from=logs-to-archive.txt
+          if [ -n "$(find build-logs -type f -print -quit)" ]; then
+            tar -czf build-logs.tar.gz build-logs
           fi
 
           if [ -s build-logs.tar.gz ]; then
